@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M4S转MP3工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 50px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            text-align: center;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .upload-form {
+            margin: 20px 0;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+            padding: 10px;
+            border: 2px dashed #007BFF;
+            border-radius: 5px;
+            width: 80%;
+        }
+        input[type="submit"] {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+        #error-message {
+            color: red;
+            margin: 15px 0;
+            min-height: 20px;
+        }
+        .image-container img {
+            width: 1000px;
+            height: 563px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>M4S转MP3工具</h1>
+        <form class="upload-form" id="uploadForm">
+            <input type="file" name="file" accept=".m4s" required>
+            <input type="submit" value="转换为MP3">
+        </form>
+        <div id="error-message"></div>
+        <div class="image-container">
+            <img src="{{ url_for('static', filename='cover.jpg') }}" alt="软件封面">
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const errorElement = document.getElementById('error-message');
+            errorElement.textContent = '处理中...';
+
+            try {
+                const response = await fetch('/convert', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText);
+                }
+
+                // 从响应头获取文件名
+                const contentDisposition = response.headers.get('Content-Disposition');
+                let filename = 'converted.mp3';
+                if (contentDisposition) {
+                    const match = contentDisposition.match(/filename="?(.+?)"?$/);
+                    if (match) filename = match[1];
+                }
+
+                // 创建下载链接
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                errorElement.textContent = '转换成功！';
+            } catch (error) {
+                errorElement.textContent = `错误：${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>
